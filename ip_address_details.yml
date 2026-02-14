@@ -1,0 +1,57 @@
+---
+- name: Get IP Address Details of OCI Linux Servers
+  hosts: oci_servers
+  gather_facts: yes
+  become: no
+  
+  tasks:
+    - name: Gather network interface facts
+      ansible.builtin.setup:
+        gather_subset:
+          - network
+      register: network_facts
+
+    - name: Display all IP addresses
+      ansible.builtin.debug:
+        msg: |
+          Hostname: {{ ansible_hostname }}
+          FQDN: {{ ansible_fqdn }}
+          All IPv4 Addresses: {{ ansible_all_ipv4_addresses }}
+          All IPv6 Addresses: {{ ansible_all_ipv6_addresses }}
+          Default IPv4: {{ ansible_default_ipv4.address | default('N/A') }}
+          Default Interface: {{ ansible_default_ipv4.interface | default('N/A') }}
+
+    - name: Get detailed network interface information
+      ansible.builtin.debug:
+        msg: |
+          Interface: {{ item }}
+          IPv4: {{ hostvars[inventory_hostname]['ansible_' + item].ipv4.address | default('N/A') }}
+          Netmask: {{ hostvars[inventory_hostname]['ansible_' + item].ipv4.netmask | default('N/A') }}
+          MAC: {{ hostvars[inventory_hostname]['ansible_' + item].macaddress | default('N/A') }}
+          MTU: {{ hostvars[inventory_hostname]['ansible_' + item].mtu | default('N/A') }}
+      loop: "{{ ansible_interfaces }}"
+      when: 
+        - item != 'lo'
+        - hostvars[inventory_hostname]['ansible_' + item].ipv4 is defined
+
+    - name: Create IP details summary
+      ansible.builtin.set_fact:
+        ip_summary:
+          hostname: "{{ ansible_hostname }}"
+          fqdn: "{{ ansible_fqdn }}"
+          primary_ip: "{{ ansible_default_ipv4.address | default('N/A') }}"
+          all_ips: "{{ ansible_all_ipv4_addresses }}"
+          interfaces: "{{ ansible_interfaces }}"
+
+    - name: Save IP details to local file
+      ansible.builtin.copy:
+        content: "{{ ip_summary | to_nice_json }}"
+        dest: "./ip_details_{{ inventory_hostname }}.json"
+      delegate_to: localhost
+
+    - name: Append to consolidated report
+      ansible.builtin.lineinfile:
+        path: "./oci_servers_ip_report.txt"
+        line: "{{ ansible_hostname }} | {{ ansible_default_ipv4.address | default('N/A') }} | {{ ansible_all_ipv4_addresses | join(', ') }}"
+        create: yes
+      delegate_to: localhost
