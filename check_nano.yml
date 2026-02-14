@@ -1,0 +1,13 @@
+---
+  - name: check_nano
+    hosts: oci_servers
+    tasks:
+      - name: check if nano is installed
+        command: rpm -q nano
+        register: nano_check
+        failed_when: false
+        changed_when: false
+      
+      - name: display result
+        debug:
+          msg: "Nano is {{ 'installed' if nano_check.rc == 0 else 'NOT installed' }}"
