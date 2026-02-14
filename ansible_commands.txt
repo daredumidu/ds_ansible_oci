@@ -11,5 +11,129 @@ ansible -i oci_inventory.ini oci_servers -b -m ping
 
 ansible -i oci_inventory.ini oci_servers -b -m command -a "whoami"
 
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+
+set a default inventory file in ansible.cfg to avoid typing -i inventory.ini every time:
+[defaults]
+inventory = ./inventory.ini
+
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+
+To use the inventory.ini file with the ansible command, you specify it with the -i flag:
+ansible -i inventory.ini oci_servers -m ping
 
 
+different ways to target hosts:
+
+# Ping all hosts in the oci_servers group
+ansible -i inventory.ini oci_servers -m ping
+
+# Ping all hosts in the inventory
+ansible -i inventory.ini all -m ping
+
+# Ping a specific host
+ansible -i inventory.ini server1.example.com -m ping
+
+# Ping multiple specific hosts (pattern matching)
+ansible -i inventory.ini 'server1*' -m ping
+
+# Ping first host in the group
+ansible -i inventory.ini oci_servers[0] -m ping
+
+
+Common additional options:
+
+# Use specific SSH user
+ansible -i inventory.ini oci_servers -m ping -u opc
+
+# Use specific SSH key
+ansible -i inventory.ini oci_servers -m ping --private-key ~/.ssh/oci_key
+
+# Verbose output (helpful for troubleshooting)
+ansible -i inventory.ini oci_servers -m ping -v
+ansible -i inventory.ini oci_servers -m ping -vvv  # very verbose
+
+# Run with sudo/become
+ansible -i inventory.ini oci_servers -m ping --become
+```
+
+**Example successful output:**
+```
+server1.example.com | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+server2.example.com | SUCCESS => {
+    "changed": false,
+    "ping": "pong"
+}
+
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+
+To run commands in sudo mode with Ansible, use the --become flag (or -b for short):
+
+# Using --become
+ansible -i inventory.ini oci_servers -m command -a "whoami" --become
+
+# Short form
+ansible -i inventory.ini oci_servers -b -m command -a "whoami"
+
+
+Common sudo patterns:
+
+# Run a shell command as root
+ansible -i inventory.ini oci_servers -b -m shell -a "cat /etc/shadow"
+
+# Install a package (requires sudo)
+ansible -i inventory.ini oci_servers -b -m yum -a "name=httpd state=present"
+
+# Restart a service
+ansible -i inventory.ini oci_servers -b -m service -a "name=httpd state=restarted"
+
+# Check disk usage as root
+ansible -i inventory.ini oci_servers -b -m command -a "df -h"
+
+# Update all packages
+ansible -i inventory.ini oci_servers -b -m yum -a "name=* state=latest"
+
+
+Specify sudo user and method:
+
+# Become a specific user (not root)
+ansible -i inventory.ini oci_servers -b --become-user=oracle -m command -a "whoami"
+
+# Specify sudo method explicitly
+ansible -i inventory.ini oci_servers -b --become-method=sudo -m command -a "whoami"
+
+# Prompt for sudo password (if needed)
+ansible -i inventory.ini oci_servers -b -K -m command -a "whoami"
+# or
+ansible -i inventory.ini oci_servers -b --ask-become-pass -m command -a "whoami"
+
+
+In your inventory file, you can set sudo as default:
+
+[oci_servers]
+server1.example.com ansible_host=10.0.1.10 ansible_user=opc
+server2.example.com ansible_host=10.0.1.11 ansible_user=opc
+
+[oci_servers:vars]
+ansible_ssh_private_key_file=~/.ssh/oci_key
+ansible_python_interpreter=/usr/bin/python3
+ansible_become=yes
+ansible_become_method=sudo
+ansible_become_user=root
+
+
+In ansible.cfg:
+
+[defaults]
+inventory = ./inventory.ini
+
+[privilege_escalation]
+become=True
+become_method=sudo
+become_user=root
+become_ask_pass=False
+
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
