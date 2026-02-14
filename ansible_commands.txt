@@ -1,0 +1,15 @@
+ansible oci -m ping
+
+ansible oci -a "cat /etc/os-release"
+
+ansible -i oci_inventory.ini oci_servers -m ping
+
+ansible-playbook -i oci_inventory.ini check_nano.yml
+
+-b run in sudo mode
+ansible -i oci_inventory.ini oci_servers -b -m ping
+
+ansible -i oci_inventory.ini oci_servers -b -m command -a "whoami"
+
+
+
